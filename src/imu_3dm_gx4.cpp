@@ -280,6 +280,9 @@ int main(int argc, char **argv) {
                  boost::bind(&updateDiagnosticInfo, _1, &imu));
     
     ROS_INFO("Resuming the device");
+    imu.sensorToVehicleFrameTrnasformation(0,0,0); // for thormang
+    // rosrun tf static_transform_publisher 0 0 0 0 0 3.141592 camera imu 100
+    //imu.zeroAngularRateUpdateControl(true);
     imu.resume();
     imu.resetFilter();
     imu.setInitialHeading(0.0);

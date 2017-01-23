@@ -1015,6 +1015,29 @@ void Imu::setInitialHeading(float heading) { // radian
   p.calcChecksum();
   sendCommand(p);
 }
+void Imu::zeroAngularRateUpdateControl(bool enabled, float threshold) {
+  Packet p(COMMAND_CLASS_FILTER);
+  PacketEncoder encoder(p);
+  encoder.beginField(ESTIMATION_FILTER_COMMAND_SET::AngularZeroRateUpdateControl);
+  encoder.append(FUNCTION_APPLY);
+  encoder.append(u8(enabled));
+  encoder.append(threshold);
+  encoder.endField();
+  p.calcChecksum();
+  sendCommand(p);
+}
+
+void Imu::sensorToVehicleFrameTrnasformation(float roll, float pitch, float yaw) {
+  Packet p(COMMAND_CLASS_FILTER);
+  PacketEncoder encoder(p);
+  encoder.beginField(ESTIMATION_FILTER_COMMAND_SET::SensortoVehicleFrameTransformation);
+  encoder.append(FUNCTION_APPLY);
+  encoder.append(roll, pitch, yaw);
+  encoder.endField();
+  p.calcChecksum();
+  sendCommand(p);
+}
+
 
 void
 Imu::setIMUDataCallback(const std::function<void(const Imu::IMUData &)> &cb) {
@@ -1238,7 +1261,7 @@ void Imu::processPacket() {
       case FILTER_DATA_SET::EstimatedEulerAngles:
         decoder.extract(3, eulers);
         decoder.extract(1, &valid);
-        std::cout << eulers[0] << "\t" << eulers[1] << "\t" << eulers[2] << std::endl;
+        // std::cout << eulers[0] << "\t" << eulers[1] << "\t" << eulers[2] << std::endl;
         break;
       default:
         std::stringstream ss;

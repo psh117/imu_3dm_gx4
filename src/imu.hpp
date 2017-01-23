@@ -380,6 +380,8 @@ public:
 
   void resetFilter();
   void setInitialHeading(float heading);
+  void zeroAngularRateUpdateControl(bool enabled, float threshold = 0.001745329);
+  void sensorToVehicleFrameTrnasformation(float roll, float pitch, float yaw);
 
   /**
    * @brief Set the IMU data callback.
