@@ -84,7 +84,119 @@ extern "C" {
 #define FIELD_STATUS_REPORT     u8(0x90)
 #define FIELD_ACK_OR_NACK       u8(0xF1)
 
-using namespace imu_3dm_gx4;
+namespace imu_3dm_gx4
+{
+// supported fields (suhan)
+namespace data_protocol
+{
+
+
+
+enum BASE_COMMAND_SET : uint8_t // 0x01
+{
+  Ping = 0x01,
+  SetToIdle = 0x02,
+  GetDeviceInformation = 0x03,
+  GetDeviceDescriptorSets = 0x04,
+  DeviceBuiltInTest_BIT = 0x05,
+  Resume = 0x06,
+  GPSTimeUpdate = 0x72,
+  DeviceReset = 0x7E
+};
+
+enum IMU_3DM_COMMAND_SET : uint8_t  // 0x0C
+{
+  PollIMUData = 0x01,
+  PollEstimationFilterData = 0x03,
+  GetIMUDataBaseRate = 0x06,
+  GetEstimationFilterDataBaseRate = 0x0B,
+  IMUMessageFormat = 0x08,
+  EstimationFilterMessageFormat = 0x0A,
+  EnableDisableDeviceContinuousDataStream = 0x011,
+  DeviceStartupSettings = 0x30,
+  IMUHardIronOffset = 0x3A,
+  IMUSoftIronMatrix = 0x3B,
+  AccelBias = 0x37,
+  GyroBias = 0x38,
+  CaptureGyroBias = 0x39,
+  ConingandScullingEnable = 0x3E,
+  ChangeUARTBAUDrate = 0x40,
+  AdvancedLowPassFilterSettings = 0x50,
+  ComplementaryFilterSettings = 0x51,
+  DeviceStatus = 0x64
+};
+
+enum ESTIMATION_FILTER_COMMAND_SET : uint8_t  // 0x0D
+{
+  ResetFilter = 0x01,
+  SetInitialAttitude = 0x02,
+  SetInitialHeading = 0x03,
+  SetInitialHeadingwithMagnetometer = 0x04,
+  TareOrientation = 0x21,
+  SensortoVehicleFrameTransformation = 0x11,
+  EstimationControl = 0x14,
+  HeadingUpdateControl = 0x18,
+  AutoInitializationControl = 0x19,
+  GyroscopeWhiteNoiseStandardDeviation = 0x1B,
+  GyroscopeBiasModelParameters = 0x1D,
+  EnableMeasurement = 0x41,
+  AccelerometerNoise = 0x1A,
+  MagnetometerNoise = 0x42,
+  DeclinationSource = 0x43,
+  AccelMagnitudeErrorAdaptiveMeasurementControl = 0x44,
+  MagnetometerMagnitudeErrorAdaptiveMeasurementControl = 0x45,
+  MagnetometerDipAngleErrorAdaptiveMeasurementControl = 0x46,
+  ExternalHeadingUpdate = 0x17,
+  ExternalHeadingUpdatewithTimestamp = 0x1F,
+  AngularZeroRateUpdateControl = 0x20,
+  CommandedZeroAngularRateUpdate = 0x23,
+  SetReferencePosition = 0x26
+};
+
+enum IMU_DATA_SET : uint8_t   // 0x80
+{
+  ScaledAccelerometerVector = 0x04,
+  ScaledGyroVector = 0x05,
+  ScaledMagnetometerVector = 0x06,
+  DeltaThetaVector = 0x07,
+  DeltaVelocityVector = 0x08,
+  CFOrientationMatrix = 0x09,
+  CFQuaternion = 0x0A,
+  CFEulerAngles = 0x0C,
+  CFStabilizedMagVector_North = 0x10,
+  CFStabilizedAccelVector_Up = 0x11,
+  IMUGPSCorrelatedTimestamp = 0x12,
+  ScaledAmbientPressure = 0x17
+};
+
+enum FILTER_DATA_SET : uint8_t  // 0x82
+{
+  FilterStatus = 0x10,
+  FilterGPSTimestamp = 0x11,
+  EstimatedQuaternion = 0x03,
+  EstimatedOrientationMatrix = 0x04,
+  EstimatedEulerAngles = 0x05,
+  EstimatedGyroBias = 0x06,
+  EstimatedAttitudeUncertainty_EulerAngles = 0x0A,
+  EstimatedAttitudeUncertainty_QuaternionElements = 0x12,
+  EstimatedGyroBiasUncertainty = 0x0B,
+  EstimatedLinearAcceleration = 0x0D,
+  EstimatedAngularRate = 0x0E,
+  WGS84LocalGravityMagnitude = 0x0F,
+  EstimatedGravityVector = 0x13,
+  HeadingUpdateSourceState = 0x14,
+  MagneticModelSolution = 0x15,
+  PressureAltitude = 0x21
+};
+
+
+
+
+}
+
+
+//using namespace imu_3dm_gx4;
+using namespace data_protocol;
 
 // trim from start
 static inline std::string ltrim(std::string s) {
@@ -879,6 +991,31 @@ void Imu::enableFilterStream(bool enabled) {
   sendCommand(p);
 }
 
+void Imu::resetFilter() {
+  Packet p(COMMAND_CLASS_FILTER);
+  PacketEncoder encoder(p);
+  encoder.beginField(ESTIMATION_FILTER_COMMAND_SET::ResetFilter);
+  encoder.endField();
+  p.calcChecksum();
+  /*
+  std::cout << std::dec << static_cast<int>(p.length) << std::endl;
+  std::cout  << std::hex << static_cast<int>(p.checkMSB) << " "
+             << std::hex << static_cast<int>(p.checkLSB) << std::endl;
+             */
+  sendCommand(p);
+}
+
+void Imu::setInitialHeading(float heading) { // radian
+
+  Packet p(COMMAND_CLASS_FILTER);
+  PacketEncoder encoder(p);
+  encoder.beginField(ESTIMATION_FILTER_COMMAND_SET::SetInitialHeading);
+  encoder.append(heading);
+  encoder.endField();
+  p.calcChecksum();
+  sendCommand(p);
+}
+
 void
 Imu::setIMUDataCallback(const std::function<void(const Imu::IMUData &)> &cb) {
   imuDataCallback_ = cb;
@@ -1059,6 +1196,9 @@ void Imu::processPacket() {
         decoder.extract(1, &data.pressure);
         data.fields |= IMUData::Barometer;
         break;
+      case IMU_DATA_SET::CFQuaternion:
+        decoder.extract(4, &data.quaternion[0]);
+        break;
       default:
         std::stringstream ss;
         ss << "Unsupported field in IMU packet: " << std::hex << d;
@@ -1072,6 +1212,8 @@ void Imu::processPacket() {
     }
   } else if (packet_.isFilterData()) {
     for (int d; (d = decoder.fieldDescriptor()) > 0; decoder.advance()) {
+      float eulers[3];
+      uint16_t valid;
       switch (u8(d)) {
       case FIELD_QUATERNION:
         decoder.extract(4, &filterData.quaternion[0]);
@@ -1092,6 +1234,11 @@ void Imu::processPacket() {
         decoder.extract(3, &filterData.biasUncertainty[0]);
         decoder.extract(1, &filterData.biasUncertaintyStatus);
         filterData.fields |= FilterData::BiasUncertainty;
+        break;
+      case FILTER_DATA_SET::EstimatedEulerAngles:
+        decoder.extract(3, eulers);
+        decoder.extract(1, &valid);
+        std::cout << eulers[0] << "\t" << eulers[1] << "\t" << eulers[2] << std::endl;
         break;
       default:
         std::stringstream ss;
@@ -1217,4 +1364,6 @@ void Imu::sendCommand(const Packet &p, bool readReply) {
   if (readReply) {
     receiveResponse(p, rwTimeout_);
   }
+}
+
 }

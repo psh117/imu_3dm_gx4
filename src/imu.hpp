@@ -172,6 +172,7 @@ public:
     float gyro[3];  /**< Angular rates, units of rad/s */
     float mag[3];   /**< Magnetic field, units of gauss */
     float pressure; /**< Pressure, units of pascal */
+    float quaternion[4]; /**< Quaternion produced by the complementary filter */
 
     IMUData() : fields(0) {}
   };
@@ -376,6 +377,9 @@ public:
    * @param enabled If true, streaming is enabled.
    */
   void enableFilterStream(bool enabled);
+
+  void resetFilter();
+  void setInitialHeading(float heading);
 
   /**
    * @brief Set the IMU data callback.

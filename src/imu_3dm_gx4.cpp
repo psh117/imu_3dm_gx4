@@ -25,13 +25,13 @@ std::string frameId;
 Imu::Info info;
 Imu::DiagnosticFields fields;
 
+sensor_msgs::Imu imu;
 //  diagnostic_updater resources
 std::shared_ptr<diagnostic_updater::Updater> updater;
 std::shared_ptr<diagnostic_updater::TopicDiagnostic> imuDiag;
 std::shared_ptr<diagnostic_updater::TopicDiagnostic> filterDiag;
 
 void publishData(const Imu::IMUData &data) {
-  sensor_msgs::Imu imu;
   sensor_msgs::MagneticField field;
   sensor_msgs::FluidPressure pressure;
 
@@ -50,8 +50,8 @@ void publishData(const Imu::IMUData &data) {
   pressure.header.stamp = imu.header.stamp;
   pressure.header.frame_id = frameId;
 
-  imu.orientation_covariance[0] =
-      -1; //  orientation data is on a separate topic
+  //imu.orientation_covariance[0] =
+  //    -1; //  orientation data is on a separate topic
 
   imu.linear_acceleration.x = data.accel[0] * kEarthGravity;
   imu.linear_acceleration.y = data.accel[1] * kEarthGravity;
@@ -88,6 +88,7 @@ void publishFilter(const Imu::FilterData &data) {
   output.orientation.x = data.quaternion[1];
   output.orientation.y = data.quaternion[2];
   output.orientation.z = data.quaternion[3];
+  imu.orientation = output.orientation;
   output.bias.x = data.bias[0];
   output.bias.y = data.bias[1];
   output.bias.z = data.bias[2];
@@ -102,7 +103,8 @@ void publishFilter(const Imu::FilterData &data) {
       data.angleUncertainty[1];
   output.orientation_covariance[8] = data.angleUncertainty[2]*
       data.angleUncertainty[2];
-  
+
+  imu.orientation_covariance = output.orientation_covariance;
   output.quat_status = data.quaternionStatus;
   output.bias_status = data.biasStatus;
   output.orientation_covariance_status = data.angleUncertaintyStatus;
@@ -279,6 +281,8 @@ int main(int argc, char **argv) {
     
     ROS_INFO("Resuming the device");
     imu.resume();
+    imu.resetFilter();
+    imu.setInitialHeading(0.0);
 
     while (ros::ok()) {
       imu.runOnce();
